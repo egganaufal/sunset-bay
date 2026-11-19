@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOLMARA — an open-world crime game</title>
+<style>
+  :root {
+    --panel: rgba(12, 16, 22, 0.72);
+    --ink: #f2ede3;
+    --muted: #b9c0c8;
+    --accent: #f2c230;
+    --danger: #e5534b;
+    --good: #37c978;
+    --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0c1016; font-family: var(--font); }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  #hud { position: fixed; inset: 0; pointer-events: none; display: none; color: var(--ink); }
+  .panel { background: var(--panel); border-radius: 8px; padding: 8px 12px; backdrop-filter: blur(2px); }
+  #topleft { position: absolute; top: 14px; left: 14px; display: flex; flex-direction: column; gap: 8px; }
+  #stars { font-size: 26px; letter-spacing: 4px; text-shadow: 0 2px 6px #000; }
+  #cash { font-size: 22px; font-weight: 700; color: var(--good); }
+  #objective { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); text-align: center; min-width: 320px; }
+  #objective-title { font-size: 15px; font-weight: 800; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; }
+  #objective-text { font-size: 16px; margin-top: 2px; }
+  #objective-dist { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  #minimap-wrap { position: absolute; left: 14px; bottom: 14px; }
+  #minimap { width: 200px; height: 200px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.35); display: block; background: #10151c; }
+  #health-wrap { position: absolute; left: 14px; bottom: 226px; width: 200px; }
+  #health-bar { height: 10px; background: rgba(0,0,0,0.55); border-radius: 5px; overflow: hidden; }
+  #health-fill { height: 100%; width: 100%; background: var(--good); }
+  #ammo { position: absolute; right: 14px; bottom: 86px; font-size: 17px; font-weight: 700; }
+  #speed { position: absolute; right: 14px; bottom: 52px; font-size: 26px; font-weight: 800; }
+  #toast { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); font-size: 17px; font-weight: 600; opacity: 0; transition: opacity 0.4s; white-space: nowrap; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; display: none; }
+  #crosshair::before, #crosshair::after { content: ""; position: absolute; background: #fff; box-shadow: 0 0 3px #000; }
+  #crosshair::before { left: 10px; top: 0; width: 2px; height: 22px; }
+  #crosshair::after { left: 0; top: 10px; width: 22px; height: 2px; }
+  #interact-prompt { position: absolute; left: 50%; bottom: 170px; transform: translateX(-50%); font-size: 16px; font-weight: 700; display: none; }
+  #damage-flash { position: fixed; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center, transparent 55%, rgba(229,83,75,0.55) 100%); }
+  .screen { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; color: var(--ink); text-align: center; background: linear-gradient(180deg, rgba(10,14,20,0.25) 0%, rgba(10,14,20,0.78) 100%); z-index: 5; }
+  .screen h1 { font-size: 84px; margin: 0; letter-spacing: 12px; color: var(--accent); text-shadow: 0 4px 0 #7a4a00, 0 8px 24px rgba(0,0,0,0.7); }
+  .screen h2 { font-size: 40px; margin: 0 0 8px; letter-spacing: 6px; }
+  .screen p { max-width: 620px; font-size: 17px; line-height: 1.55; color: var(--ink); margin: 10px 0; }
+  .screen .sub { color: var(--muted); font-size: 15px; }
+  .screen button { pointer-events: auto; font-family: var(--font); font-size: 18px; font-weight: 700; color: #14100a; background: var(--accent); border: none; border-radius: 8px; padding: 12px 28px; margin: 6px; cursor: pointer; }
+  .screen button.secondary { background: rgba(255,255,255,0.16); color: var(--ink); }
+  .screen button:hover { filter: brightness(1.12); }
+  .controls { font-size: 14px; color: var(--muted); line-height: 1.9; margin-top: 14px; }
+  .controls b { color: var(--ink); }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.min.js"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="game" aria-label="SOLMARA: an open-world crime game. Drive, steal cars, run missions and lose the cops."></canvas>
+<p id="status" role="status" aria-live="polite"></p>
+<div id="damage-flash"></div>
+
+<div id="hud">
+  <div id="topleft">
+    <div id="stars" class="panel">&#9734;&#9734;&#9734;&#9734;&#9734;</div>
+    <div id="cash" class="panel">$0</div>
+  </div>
+  <div id="objective" class="panel">
+    <div id="objective-title">First Fare</div>
+    <div id="objective-text"></div>
+    <div id="objective-dist"></div>
+  </div>
+  <div id="health-wrap"><div id="health-bar"><div id="health-fill"></div></div></div>
+  <div id="minimap-wrap"><canvas id="minimap" width="200" height="200"></canvas></div>
+  <div id="ammo" class="panel"></div>
+  <div id="speed" class="panel"></div>
+  <div id="toast" class="panel"></div>
+  <div id="interact-prompt" class="panel"></div>
+  <div id="crosshair"></div>
+</div>
+
+<div class="screen" id="screen-title">
+  <h1>SOLMARA</h1>
+  <p>Sun, sea and bad decisions. Rio Vale came back to Solmara with a fast car and no plan —
+  now Milo's crew, the Vipers and the whole Solmara PD want a piece of him. Drive the city,
+  take what you need, finish the five jobs and take the crown.</p>
+  <div>
+    <button id="btn-new">New Game</button>
+    <button id="btn-continue" class="secondary">Continue</button>
+  </div>
+  <div class="controls">
+    <b>W A S D</b> move / drive &nbsp;·&nbsp; <b>Shift</b> run &nbsp;·&nbsp; <b>Mouse drag</b> camera &nbsp;·&nbsp; <b>Right mouse</b> aim, <b>Click</b> shoot<br>
+    <b>E</b> steal / enter car · pick up &nbsp;·&nbsp; <b>R</b> reload &nbsp;·&nbsp; <b>Space</b> jump &nbsp;·&nbsp; <b>H</b> horn &nbsp;·&nbsp; <b>P / Esc</b> pause &nbsp;·&nbsp; <b>M</b> mute
+  </div>
+  <p class="sub">Progress saves automatically. Fares and hidden packages pay cash between jobs.</p>
+</div>
+
+<div class="screen" id="screen-pause">
+  <h2>Paused</h2>
+  <p>Solmara waits for no one. Except now — it waits for you.</p>
+  <div>
+    <button id="btn-resume">Resume</button>
+    <button id="btn-save" class="secondary">Save</button>
+    <button id="btn-restart" class="secondary">Restart</button>
+    <button id="btn-quit" class="secondary">Quit to Title</button>
+  </div>
+</div>
+
+<div class="screen" id="screen-over">
+  <h2>WASTED</h2>
+  <p>Rio went down in Solmara. The city keeps the car — you keep the story.</p>
+  <div><button id="btn-again">Try Again</button></div>
+</div>
+
+<div class="screen" id="screen-busted">
+  <h2>BUSTED</h2>
+  <p>The Solmara PD finally got their hands on Rio. Bail is posted. The city is still out there.</p>
+  <div><button id="btn-busted-again">Back on the Street</button></div>
+</div>
+
+<div class="screen" id="screen-complete">
+  <h2>KING OF SOLMARA</h2>
+  <p>All five jobs done. Milo's crew runs the city now, and Rio Vale runs Milo's crew.
+  Free roam: fares and packages still pay.</p>
+  <div><button id="btn-free-roam">Keep Playing</button></div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
