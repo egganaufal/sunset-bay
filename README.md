@@ -4,24 +4,12 @@
 [![rank](https://make.fun/badge/gta6-01/egganaufal/sunset-bay/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 [![reward](https://make.fun/badge/gta6-01/egganaufal/sunset-bay/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 
-SOLMARA is an original open-world crime game in the spirit of GTA 6: a sun-soaked
-fictional coastal city (9x9 blocks, 6 districts) to explore on foot and by car,
-with traffic AI, pedestrians, cars to steal and drive, a 0-5 star wanted level
-with police who chase and arrest, hitscan combat against a rival crew, 5 chained
-story missions as Rio Vale, taxi side work, 12 hidden packages, a HUD with a live
-minimap, a start screen, and localStorage saves. Built with three.js (vendored),
-no Rockstar assets, no network requests — everything is original.
+SOLMARA is an original open-world crime game set in Rio Vale, a coastal city split into six districts. You play through five chained story missions, pick up taxi work between jobs, and hunt down twelve hidden packages scattered around the map. The police respond to what you do: a wanted level from 0 to 5 brings chases and arrests, and a rival crew will fight you in the streets. A HUD with a minimap keeps you oriented, your progress saves, and the sound is all synthesized — no audio files. Everything in it is original: the city, the characters, and the story. No Rockstar assets, names, or story are used. It runs offline in desktop Chrome.
 
 ## Run it
 
 ```sh
 node serve.ts
-```
-
-Then open http://localhost:8080. To build the submission output instead:
-
-```sh
-MAKEFUN_OUTPUT_DIR=out node main.ts
 ```
 
 ---
